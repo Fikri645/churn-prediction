@@ -172,6 +172,9 @@ with demo:
                 result_md = gr.Markdown("*Fill in the form and click Predict.*")
                 shap_plot = gr.Plot(label="SHAP — feature impact for this customer")
 
+        # api_name=False: prevents get_api_info() from introspecting gr.Plot's
+        # schema, which triggers "TypeError: argument of type 'bool' is not iterable"
+        # in gradio_client/utils.py on every request (Gradio 5.9.1 bug).
         btn.click(
             predict_single,
             inputs=[gender, senior, partner, dependents, tenure, phone,
@@ -179,6 +182,7 @@ with demo:
                     techsupport, streaming_tv, streaming_mv, contract,
                     paperless, payment, monthly, total],
             outputs=[result_md, shap_plot],
+            api_name=False,
         )
 
     with gr.Tab("📊 Batch Prediction"):
@@ -191,7 +195,7 @@ with demo:
         batch_table = gr.Dataframe(label="Results")
         batch_summary = gr.Markdown()
         batch_btn.click(predict_batch, inputs=file_input,
-                        outputs=[batch_table, batch_summary])
+                        outputs=[batch_table, batch_summary], api_name=False)
 
     with gr.Tab("ℹ️ Model Info"):
         gr.Markdown("""
@@ -225,7 +229,6 @@ Top drivers of churn:
 
 
 if __name__ == "__main__":
-    demo.launch(share=False, ssr_mode=False)
-else:
-    # HF Spaces entrypoint — disable SSR to avoid Gradio 5.x api_info bug
-    demo.launch(ssr_mode=False)
+    # server_name="0.0.0.0" is required on HF Spaces (container doesn't expose localhost).
+    # share=False would raise ValueError in containers — omit it entirely.
+    demo.launch(server_name="0.0.0.0", ssr_mode=False)
