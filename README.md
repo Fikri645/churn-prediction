@@ -14,7 +14,7 @@ python_version: "3.11"
 
 End-to-end MLOps pipeline predicting telecom customer churn. Built as a Data Scientist portfolio piece demonstrating the full workflow from raw data to a live web demo.
 
-**[Live Demo →](https://huggingface.co/spaces/fikri0o0/churn-prediction)**  |  **[MLflow Experiments →](#)**
+**[Live Demo →](https://huggingface.co/spaces/fikri0o0/churn-prediction)**  |  **[GitHub →](https://github.com/Fikri645/churn-prediction)**
 
 ---
 
