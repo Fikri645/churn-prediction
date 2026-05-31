@@ -115,62 +115,64 @@ def predict_batch(file_obj):
 
 # ── Build UI ───────────────────────────────────────────────────────────────
 
-YES_NO       = ["Yes", "No"]
-YN_NOPHONE   = ["Yes", "No", "No phone service"]
-YN_NOINET    = ["Yes", "No", "No internet service"]
+YES_NO  = ["Yes", "No"]
+# Shortened display labels so 4-per-row fits without truncation
+YN_NOPHONE = [("Yes","Yes"), ("No","No"), ("No phone","No phone service")]
+YN_NOINET  = [("Yes","Yes"), ("No","No"), ("No inet","No internet service")]
+PAYMENT    = [
+    ("E-check",       "Electronic check"),
+    ("Mail check",    "Mailed check"),
+    ("Bank transfer", "Bank transfer (automatic)"),
+    ("Credit card",   "Credit card (automatic)"),
+]
 
-# Disable SSR — Gradio 5.x SSR causes TypeError in api_info when gr.Checkbox
-# is present (additionalProperties:false schema bug). Safe to disable on HF Spaces.
 demo = gr.Blocks(title="Churn Predictor", theme=gr.themes.Soft())
 with demo:
     gr.Markdown("# 📉 Customer Churn Predictor\nXGBoost · SHAP · IBM Telco dataset")
 
     with gr.Tab("🔍 Single Prediction"):
-
-        # ── TOP: Predict button + output (always in viewport) ─────────────
-        btn = gr.Button("🔮 Predict Churn", variant="primary", size="lg")
         with gr.Row():
-            result_md = gr.Markdown("*Adjust the inputs below, then click Predict.*")
-            shap_plot = gr.Plot(label="SHAP — feature impact for this customer")
 
-        gr.Markdown("---")
+            # ── LEFT: all inputs, 4-per-row — fits in one viewport ────────
+            with gr.Column(scale=2):
+                tenure = gr.Slider(0, 72, value=12, step=1, label="Tenure (months)")
 
-        # ── FORM: 2 columns (key fields) + Accordion (extra services) ─────
-        with gr.Row():
-            # Col 1 — top SHAP features
-            with gr.Column():
-                tenure    = gr.Slider(0, 72, value=12, step=1,   label="Tenure (months)")
-                contract  = gr.Dropdown(["Month-to-month","One year","Two year"],
-                                        label="Contract",         value="Month-to-month")
-                internet  = gr.Dropdown(["DSL","Fiber optic","No"],
-                                        label="Internet Service", value="Fiber optic")
-                monthly   = gr.Number(label="Monthly Charges ($)", value=65.0)
-                payment   = gr.Dropdown([
-                    "Electronic check","Mailed check",
-                    "Bank transfer (automatic)","Credit card (automatic)"],
-                    label="Payment Method", value="Electronic check")
+                with gr.Row():
+                    contract  = gr.Dropdown(["Month-to-month","One year","Two year"],
+                                            label="Contract",        value="Month-to-month")
+                    internet  = gr.Dropdown(["DSL","Fiber optic","No"],
+                                            label="Internet",        value="Fiber optic")
+                    monthly   = gr.Number(label="Monthly ($)",        value=65.0)
+                    total     = gr.Number(label="Total ($)",          value=780.0)
 
-            # Col 2 — demographics & billing
-            with gr.Column():
-                gender     = gr.Dropdown(["Male","Female"],  label="Gender",           value="Male")
-                senior     = gr.Dropdown(["No","Yes"],        label="Senior Citizen",   value="No")
-                partner    = gr.Dropdown(YES_NO,              label="Partner",          value="No")
-                dependents = gr.Dropdown(YES_NO,              label="Dependents",       value="No")
-                paperless  = gr.Dropdown(YES_NO,              label="Paperless Billing",value="Yes")
-                total      = gr.Number(label="Total Charges ($)", value=780.0)
+                with gr.Row():
+                    gender    = gr.Dropdown(["Male","Female"],  label="Gender",    value="Male")
+                    senior    = gr.Dropdown(["No","Yes"],        label="Senior",    value="No")
+                    partner   = gr.Dropdown(YES_NO,              label="Partner",   value="No")
+                    dependents= gr.Dropdown(YES_NO,              label="Dependents",value="No")
 
-        # Accordion for less-critical add-on services (collapsed by default)
-        with gr.Accordion("📡 Service add-ons (optional)", open=False):
-            with gr.Row():
-                phone        = gr.Dropdown(YES_NO,      label="Phone Service",    value="Yes")
-                multilines   = gr.Dropdown(YN_NOPHONE,  label="Multiple Lines",   value="No")
-                security     = gr.Dropdown(YN_NOINET,   label="Online Security",  value="No")
-                backup       = gr.Dropdown(YN_NOINET,   label="Online Backup",    value="No")
-            with gr.Row():
-                protection   = gr.Dropdown(YN_NOINET,   label="Device Protection",value="No")
-                techsupport  = gr.Dropdown(YN_NOINET,   label="Tech Support",     value="No")
-                streaming_tv = gr.Dropdown(YN_NOINET,   label="Streaming TV",     value="No")
-                streaming_mv = gr.Dropdown(YN_NOINET,   label="Streaming Movies", value="No")
+                with gr.Row():
+                    phone     = gr.Dropdown(YES_NO,      label="Phone",     value="Yes")
+                    multilines= gr.Dropdown(YN_NOPHONE,  label="Multi-line",value="No")
+                    paperless = gr.Dropdown(YES_NO,      label="Paperless", value="Yes")
+                    payment   = gr.Dropdown(PAYMENT,     label="Payment",   value="Electronic check")
+
+                with gr.Row():
+                    security  = gr.Dropdown(YN_NOINET, label="Security", value="No")
+                    backup    = gr.Dropdown(YN_NOINET, label="Backup",   value="No")
+                    protection= gr.Dropdown(YN_NOINET, label="Protect",  value="No")
+                    techsupport=gr.Dropdown(YN_NOINET, label="Tech Sup", value="No")
+
+                with gr.Row():
+                    streaming_tv = gr.Dropdown(YN_NOINET, label="Stream TV",    value="No")
+                    streaming_mv = gr.Dropdown(YN_NOINET, label="Stream Movies", value="No")
+
+                btn = gr.Button("🔮 Predict Churn", variant="primary", size="lg")
+
+            # ── RIGHT: result + SHAP (always visible beside form) ─────────
+            with gr.Column(scale=1):
+                result_md = gr.Markdown("*Adjust inputs and click Predict.*")
+                shap_plot = gr.Plot(label="SHAP feature impact")
 
         btn.click(
             predict_single,
