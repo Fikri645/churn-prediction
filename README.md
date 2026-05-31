@@ -1,3 +1,15 @@
+---
+title: Customer Churn Predictor
+emoji: 📉
+colorFrom: blue
+colorTo: red
+sdk: gradio
+sdk_version: "5.6.0"
+app_file: app/gradio_app.py
+pinned: false
+python_version: "3.11"
+---
+
 # Customer Churn Prediction
 
 End-to-end MLOps pipeline predicting telecom customer churn. Built as a Data Scientist portfolio piece demonstrating the full workflow from raw data to a live web demo.
