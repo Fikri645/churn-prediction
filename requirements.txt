@@ -1,31 +1,10 @@
-# Core ML
-pandas>=2.2
-numpy>=1.26
-scikit-learn>=1.5
-xgboost>=3.0
-optuna>=4.0
-imbalanced-learn>=0.12
-
-# Explainability
-shap>=0.52
-matplotlib>=3.9
-seaborn>=0.13
-
-# Experiment tracking
-mlflow>=3.0
-
-# API
-fastapi>=0.115
-uvicorn[standard]>=0.32
-pydantic>=2.9
-
-# UI
-gradio>=5.0
-
-# Drift monitoring
-evidently>=0.7
-
-# Utilities
-python-dotenv>=1.0
-joblib>=1.4
-requests>=2.32
+# Runtime requirements for the Gradio app (HF Spaces)
+# Full dev stack (training, API, monitoring): see requirements-dev.txt
+pandas
+numpy
+scikit-learn
+xgboost>=2.0
+shap
+matplotlib
+seaborn
+joblib
