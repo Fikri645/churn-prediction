@@ -51,10 +51,9 @@ MLFLOW_RUN_NAME   = "xgb-optuna"
 
 # ── Model defaults (overridden by Optuna) ──────────────────────────────────
 XGB_BASE_PARAMS = {
-    "eval_metric"    : "auc",
-    "use_label_encoder": False,
-    "random_state"   : RANDOM_SEED,
-    "n_jobs"         : -1,
+    "eval_metric" : "auc",
+    "random_state": RANDOM_SEED,
+    "n_jobs"      : -1,
 }
 
 OPTUNA_N_TRIALS = 50

@@ -29,6 +29,9 @@ class BinaryEncoder(BaseEstimator, TransformerMixin):
     MAP = {"Yes": 1, "No": 0, "Male": 1, "Female": 0}
 
     def fit(self, X, y=None):
+        # Store fitted state so check_is_fitted passes (sklearn 1.5+)
+        self.n_features_in_ = X.shape[1] if hasattr(X, "shape") else len(X.columns)
+        self.feature_names_in_ = list(X.columns) if hasattr(X, "columns") else None
         return self
 
     def transform(self, X):

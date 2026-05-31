@@ -11,7 +11,7 @@ End-to-end MLOps pipeline predicting telecom customer churn. Built as a Data Sci
 | What | Detail |
 |---|---|
 | **Algorithm** | XGBoost with Optuna HPO (50 trials, TPE sampler) |
-| **ROC-AUC** | ~0.XX (test set, 20% split) |
+| **ROC-AUC** | 0.8486 (test set, 20% split) |
 | **Explainability** | SHAP TreeExplainer — global + per-customer breakdown |
 | **Serving** | FastAPI REST endpoint (`/predict`, `/predict/batch`) |
 | **UI** | Gradio — single prediction + CSV batch upload |
@@ -117,6 +117,21 @@ Features: tenure, monthly charges, contract type, internet service, add-on servi
 ### Hyperparameter Search (Optuna)
 
 50 trials with TPE sampler over: `n_estimators`, `max_depth`, `learning_rate`, `subsample`, `colsample_bytree`, `reg_alpha`, `reg_lambda`, `min_child_weight`.
+
+**Best hyperparameters found:**
+- `n_estimators=600`, `max_depth=3`, `learning_rate=0.016`
+- `subsample=0.59`, `colsample_bytree=0.70`
+- `scale_pos_weight=2.77` (class imbalance correction)
+
+**Test set results (1,409 customers):**
+
+| Metric | Score |
+|---|---|
+| ROC-AUC | **0.8486** |
+| Recall (Churn) | **0.80** — catches 4 in 5 churners |
+| Precision (Churn) | 0.52 |
+| F1 (Churn) | 0.63 |
+| Accuracy | 0.75 |
 
 ### Key SHAP Findings
 

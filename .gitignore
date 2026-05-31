@@ -18,15 +18,11 @@ mlartifacts/
 .ipynb_checkpoints/
 *.ipynb_metadata
 
-# Models (tracked via MLflow; commit only the export for HF Spaces)
-models/*.pkl
-models/*.joblib
-models/*.json
-!models/.gitkeep
-
-# Reports
-reports/figures/
-!reports/.gitkeep
+# MLflow artifacts (tracked by MLflow; don't double-commit)
+# Models and report figures ARE committed for portfolio visibility
+!models/xgb_pipeline.joblib
+!models/shap_values.npy
+!reports/figures/*.png
 
 # Evidently
 monitoring/reports/

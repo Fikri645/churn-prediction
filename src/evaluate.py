@@ -97,7 +97,8 @@ def plot_shap_bar(shap_values, feature_names):
     df = df.nlargest(15, "importance")
 
     fig, ax = plt.subplots(figsize=(7, 5))
-    sns.barplot(data=df, y="feature", x="importance", palette="viridis", ax=ax)
+    sns.barplot(data=df, y="feature", x="importance", hue="feature",
+                palette="viridis", legend=False, ax=ax)
     ax.set_title("Top 15 Features — Mean |SHAP value|")
     ax.set_xlabel("Mean |SHAP value|")
     ax.set_ylabel("")
