@@ -126,55 +126,52 @@ with demo:
     gr.Markdown("# 📉 Customer Churn Predictor\nXGBoost · SHAP · IBM Telco dataset")
 
     with gr.Tab("🔍 Single Prediction"):
+
+        # ── TOP: Predict button + output (always in viewport) ─────────────
+        btn = gr.Button("🔮 Predict Churn", variant="primary", size="lg")
         with gr.Row():
+            result_md = gr.Markdown("*Adjust the inputs below, then click Predict.*")
+            shap_plot = gr.Plot(label="SHAP — feature impact for this customer")
 
-            # ── LEFT: form (3 compact columns) ────────────────────────────
-            with gr.Column(scale=3):
-                with gr.Row():
-                    # Col A: Demographics + Phone
-                    with gr.Column():
-                        gender       = gr.Dropdown(["Male","Female"],  label="Gender",          value="Male")
-                        senior       = gr.Dropdown(["No", "Yes"], value="No", label="Senior Citizen")
-                        partner      = gr.Dropdown(YES_NO, label="Partner",          value="No")
-                        dependents   = gr.Dropdown(YES_NO, label="Dependents",       value="No")
-                        phone        = gr.Dropdown(YES_NO, label="Phone Service",    value="Yes")
-                        multilines   = gr.Dropdown(YN_NOPHONE, label="Multiple Lines", value="No")
+        gr.Markdown("---")
 
-                    # Col B: Account & Billing
-                    with gr.Column():
-                        tenure       = gr.Slider(0, 72, value=12, step=1, label="Tenure (months)")
-                        contract     = gr.Dropdown(
-                            ["Month-to-month","One year","Two year"],
-                            label="Contract", value="Month-to-month")
-                        paperless    = gr.Dropdown(YES_NO, label="Paperless Billing", value="Yes")
-                        payment      = gr.Dropdown([
-                            "Electronic check","Mailed check",
-                            "Bank transfer (automatic)","Credit card (automatic)"],
-                            label="Payment Method", value="Electronic check")
-                        monthly      = gr.Number(label="Monthly Charges ($)", value=65.0)
-                        total        = gr.Number(label="Total Charges ($)",   value=780.0)
+        # ── FORM: 2 columns (key fields) + Accordion (extra services) ─────
+        with gr.Row():
+            # Col 1 — top SHAP features
+            with gr.Column():
+                tenure    = gr.Slider(0, 72, value=12, step=1,   label="Tenure (months)")
+                contract  = gr.Dropdown(["Month-to-month","One year","Two year"],
+                                        label="Contract",         value="Month-to-month")
+                internet  = gr.Dropdown(["DSL","Fiber optic","No"],
+                                        label="Internet Service", value="Fiber optic")
+                monthly   = gr.Number(label="Monthly Charges ($)", value=65.0)
+                payment   = gr.Dropdown([
+                    "Electronic check","Mailed check",
+                    "Bank transfer (automatic)","Credit card (automatic)"],
+                    label="Payment Method", value="Electronic check")
 
-                    # Col C: Internet Services
-                    with gr.Column():
-                        internet     = gr.Dropdown(["DSL","Fiber optic","No"],
-                                                   label="Internet Service", value="Fiber optic")
-                        security     = gr.Dropdown(YN_NOINET, label="Online Security",   value="No")
-                        backup       = gr.Dropdown(YN_NOINET, label="Online Backup",     value="No")
-                        protection   = gr.Dropdown(YN_NOINET, label="Device Protection", value="No")
-                        techsupport  = gr.Dropdown(YN_NOINET, label="Tech Support",      value="No")
-                        streaming_tv = gr.Dropdown(YN_NOINET, label="Streaming TV",      value="No")
-                        streaming_mv = gr.Dropdown(YN_NOINET, label="Streaming Movies",  value="No")
+            # Col 2 — demographics & billing
+            with gr.Column():
+                gender     = gr.Dropdown(["Male","Female"],  label="Gender",           value="Male")
+                senior     = gr.Dropdown(["No","Yes"],        label="Senior Citizen",   value="No")
+                partner    = gr.Dropdown(YES_NO,              label="Partner",          value="No")
+                dependents = gr.Dropdown(YES_NO,              label="Dependents",       value="No")
+                paperless  = gr.Dropdown(YES_NO,              label="Paperless Billing",value="Yes")
+                total      = gr.Number(label="Total Charges ($)", value=780.0)
 
-                btn = gr.Button("🔮 Predict Churn", variant="primary", size="lg")
+        # Accordion for less-critical add-on services (collapsed by default)
+        with gr.Accordion("📡 Service add-ons (optional)", open=False):
+            with gr.Row():
+                phone        = gr.Dropdown(YES_NO,      label="Phone Service",    value="Yes")
+                multilines   = gr.Dropdown(YN_NOPHONE,  label="Multiple Lines",   value="No")
+                security     = gr.Dropdown(YN_NOINET,   label="Online Security",  value="No")
+                backup       = gr.Dropdown(YN_NOINET,   label="Online Backup",    value="No")
+            with gr.Row():
+                protection   = gr.Dropdown(YN_NOINET,   label="Device Protection",value="No")
+                techsupport  = gr.Dropdown(YN_NOINET,   label="Tech Support",     value="No")
+                streaming_tv = gr.Dropdown(YN_NOINET,   label="Streaming TV",     value="No")
+                streaming_mv = gr.Dropdown(YN_NOINET,   label="Streaming Movies", value="No")
 
-            # ── RIGHT: output (appears beside the form, not below) ────────
-            with gr.Column(scale=2):
-                result_md = gr.Markdown("*Fill in the form and click Predict.*")
-                shap_plot = gr.Plot(label="SHAP — feature impact for this customer")
-
-        # api_name=False: prevents get_api_info() from introspecting gr.Plot's
-        # schema, which triggers "TypeError: argument of type 'bool' is not iterable"
-        # in gradio_client/utils.py on every request (Gradio 5.9.1 bug).
         btn.click(
             predict_single,
             inputs=[gender, senior, partner, dependents, tenure, phone,
