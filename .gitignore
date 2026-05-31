@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# Data (raw data not committed; processed + model artifacts are)
+data/raw/
+data/processed/
+
+# MLflow
+mlruns/
+mlartifacts/
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb_metadata
+
+# Models (tracked via MLflow; commit only the export for HF Spaces)
+models/*.pkl
+models/*.joblib
+models/*.json
+!models/.gitkeep
+
+# Reports
+reports/figures/
+!reports/.gitkeep
+
+# Evidently
+monitoring/reports/
+
+# Docker
+.dockerignore
+
+# OS
+.DS_Store
+Thumbs.db
+*.swp
