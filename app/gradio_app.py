@@ -66,7 +66,7 @@ def predict_single(
     PaymentMethod, MonthlyCharges, TotalCharges,
 ):
     row = pd.DataFrame([{
-        "gender": gender, "SeniorCitizen": int(SeniorCitizen),
+        "gender": gender, "SeniorCitizen": 1 if SeniorCitizen == "Yes" else 0,
         "Partner": Partner, "Dependents": Dependents,
         "tenure": int(tenure), "PhoneService": PhoneService,
         "MultipleLines": MultipleLines, "InternetService": InternetService,
@@ -119,7 +119,10 @@ YES_NO       = ["Yes", "No"]
 YN_NOPHONE   = ["Yes", "No", "No phone service"]
 YN_NOINET    = ["Yes", "No", "No internet service"]
 
-with gr.Blocks(title="Churn Predictor", theme=gr.themes.Soft()) as demo:
+# Disable SSR — Gradio 5.x SSR causes TypeError in api_info when gr.Checkbox
+# is present (additionalProperties:false schema bug). Safe to disable on HF Spaces.
+demo = gr.Blocks(title="Churn Predictor", theme=gr.themes.Soft())
+with demo:
     gr.Markdown("# 📉 Customer Churn Predictor\nXGBoost · SHAP · IBM Telco dataset")
 
     with gr.Tab("🔍 Single Prediction"):
@@ -131,7 +134,7 @@ with gr.Blocks(title="Churn Predictor", theme=gr.themes.Soft()) as demo:
                     # Col A: Demographics + Phone
                     with gr.Column():
                         gender       = gr.Dropdown(["Male","Female"],  label="Gender",          value="Male")
-                        senior       = gr.Checkbox(label="Senior Citizen")
+                        senior       = gr.Dropdown(["No", "Yes"], value="No", label="Senior Citizen")
                         partner      = gr.Dropdown(YES_NO, label="Partner",          value="No")
                         dependents   = gr.Dropdown(YES_NO, label="Dependents",       value="No")
                         phone        = gr.Dropdown(YES_NO, label="Phone Service",    value="Yes")
@@ -222,4 +225,7 @@ Top drivers of churn:
 
 
 if __name__ == "__main__":
-    demo.launch(share=False)
+    demo.launch(share=False, ssr_mode=False)
+else:
+    # HF Spaces entrypoint — disable SSR to avoid Gradio 5.x api_info bug
+    demo.launch(ssr_mode=False)
