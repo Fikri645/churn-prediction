@@ -124,15 +124,20 @@ with gr.Blocks(title="Churn Predictor", theme=gr.themes.Soft()) as demo:
 
     with gr.Tab("🔍 Single Prediction"):
         with gr.Row():
+            # ── Column 1: Demographics + Phone ────────────────────────────
             with gr.Column():
-                gr.Markdown("### Demographics")
+                gr.Markdown("### 👤 Demographics")
                 gender       = gr.Radio(["Male", "Female"], label="Gender", value="Male")
                 senior       = gr.Checkbox(label="Senior Citizen")
                 partner      = gr.Radio(YES_NO, label="Partner", value="No")
                 dependents   = gr.Radio(YES_NO, label="Dependents", value="No")
+                gr.Markdown("### 📞 Phone")
+                phone        = gr.Radio(YES_NO, label="Phone Service", value="Yes")
+                multilines   = gr.Dropdown(YN_NOPHONE, label="Multiple Lines", value="No")
 
+            # ── Column 2: Account / Billing ────────────────────────────────
             with gr.Column():
-                gr.Markdown("### Account")
+                gr.Markdown("### 💳 Account & Billing")
                 tenure       = gr.Slider(0, 72, value=12, label="Tenure (months)", step=1)
                 contract     = gr.Dropdown(["Month-to-month","One year","Two year"],
                                            label="Contract", value="Month-to-month")
@@ -144,13 +149,11 @@ with gr.Blocks(title="Churn Predictor", theme=gr.themes.Soft()) as demo:
                 monthly      = gr.Number(label="Monthly Charges ($)", value=65.0)
                 total        = gr.Number(label="Total Charges ($)", value=780.0)
 
-        with gr.Row():
+            # ── Column 3: Internet services ────────────────────────────────
             with gr.Column():
-                gr.Markdown("### Phone & Internet Services")
-                phone        = gr.Radio(YES_NO,      label="Phone Service",      value="Yes")
-                multilines   = gr.Dropdown(YN_NOPHONE, label="Multiple Lines",   value="No")
+                gr.Markdown("### 🌐 Internet Services")
                 internet     = gr.Dropdown(["DSL","Fiber optic","No"],
-                                           label="Internet Service",             value="Fiber optic")
+                                           label="Internet Service", value="Fiber optic")
                 security     = gr.Dropdown(YN_NOINET, label="Online Security",   value="No")
                 backup       = gr.Dropdown(YN_NOINET, label="Online Backup",     value="No")
                 protection   = gr.Dropdown(YN_NOINET, label="Device Protection", value="No")
@@ -158,7 +161,7 @@ with gr.Blocks(title="Churn Predictor", theme=gr.themes.Soft()) as demo:
                 streaming_tv = gr.Dropdown(YN_NOINET, label="Streaming TV",      value="No")
                 streaming_mv = gr.Dropdown(YN_NOINET, label="Streaming Movies",  value="No")
 
-        btn = gr.Button("Predict", variant="primary")
+        btn = gr.Button("🔮 Predict Churn", variant="primary", size="lg")
         with gr.Row():
             result_md = gr.Markdown()
             shap_plot = gr.Plot(label="SHAP feature impact")
