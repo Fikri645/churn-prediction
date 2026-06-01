@@ -8,6 +8,7 @@ Deploy to HF Spaces:
     gradio deploy
 """
 import io
+import json
 import joblib
 import numpy as np
 import pandas as pd
@@ -17,30 +18,70 @@ import matplotlib.pyplot as plt
 import shap
 import gradio as gr
 
-from src.config import MODEL_PATH, SHAP_VALUES
+from src.config import MODEL_PATH, MODELS_DIR
 from src.preprocess import build_preprocessor, get_feature_names, load_raw, split
 
 # ── Load artifacts ─────────────────────────────────────────────────────────
 pipeline = joblib.load(MODEL_PATH)
-preprocessor = pipeline.named_steps["prep"]
-model        = pipeline.named_steps["model"]
+
+# Support both pure-sklearn pipelines and imblearn pipelines
+_steps = dict(pipeline.named_steps)
+preprocessor  = _steps["prep"]
+model         = _steps["model"]
 feature_names = get_feature_names(preprocessor)
-explainer     = shap.TreeExplainer(model)
+
+# Only TreeExplainer works for tree-based models (XGBoost/LightGBM)
+try:
+    explainer = shap.TreeExplainer(model)
+    _has_shap = True
+except Exception:
+    _has_shap = False
+
+# Load optimal threshold + business metadata (written by src/experiments.py)
+_meta_path = MODELS_DIR / "model_meta.json"
+_meta      = json.loads(_meta_path.read_text()) if _meta_path.exists() else {}
+OPTIMAL_THRESHOLD = _meta.get("optimal_threshold", 0.5)
+CLV_MONTHS        = 12      # months used for CLV estimate
+CAMPAIGN_COST     = 20.0    # $ per customer contacted
+RETENTION_RATE    = 0.30    # fraction of contacted churners retained
 
 
 def _predict_df(df: pd.DataFrame) -> np.ndarray:
     return pipeline.predict_proba(df)[:, 1]
 
 
-def _risk(prob: float) -> str:
-    if prob >= 0.65: return "🔴 High"
-    if prob >= 0.40: return "🟡 Medium"
-    return "🟢 Low"
+def _risk(prob: float, threshold: float = OPTIMAL_THRESHOLD) -> str:
+    """Risk label uses the business-optimal threshold, not 0.5."""
+    if prob >= threshold:
+        intensity = (prob - threshold) / (1 - threshold)
+        return "🔴 High" if intensity >= 0.4 else "🟡 Medium-High"
+    intensity = prob / threshold
+    return "🟡 Medium-Low" if intensity >= 0.6 else "🟢 Low"
+
+
+def _business_estimate(prob: float, monthly_charges: float) -> str:
+    clv = monthly_charges * CLV_MONTHS
+    if prob >= OPTIMAL_THRESHOLD:
+        # If we act (contact this customer):
+        net = clv * RETENTION_RATE - CAMPAIGN_COST
+        return (
+            f"**Estimated CLV at risk:** ${clv:,.0f}\n\n"
+            f"**If we intervene** (retention campaign ~${CAMPAIGN_COST:.0f}):\n"
+            f"Expected net value = ${net:,.0f}  "
+            f"*(30% retention rate assumed)*"
+        )
+    return f"*Low risk — no retention action needed (CLV: ${clv:,.0f})*"
 
 
 # ── SHAP local bar chart ───────────────────────────────────────────────────
 
 def shap_bar_for_row(df_row: pd.DataFrame) -> plt.Figure:
+    if not _has_shap:
+        fig, ax = plt.subplots(figsize=(5, 3))
+        ax.text(0.5, 0.5, "SHAP not available for this model type",
+                ha="center", va="center", transform=ax.transAxes)
+        return fig
+
     X_t = preprocessor.transform(df_row)
     sv  = explainer.shap_values(X_t)[0]
     df_shap = pd.DataFrame({"feature": feature_names, "shap": sv})
@@ -80,7 +121,12 @@ def predict_single(
     }])
     prob = float(_predict_df(row)[0])
     label = _risk(prob)
-    result = f"## Churn Probability: **{prob:.1%}**\n\nRisk level: {label}"
+    biz   = _business_estimate(prob, float(MonthlyCharges))
+    result = (
+        f"## Churn Probability: **{prob:.1%}**\n\n"
+        f"Risk level: {label}  *(threshold: {OPTIMAL_THRESHOLD})*\n\n"
+        f"---\n{biz}"
+    )
     fig = shap_bar_for_row(row)
     return result, fig
 
@@ -197,33 +243,54 @@ with demo:
                         outputs=[batch_table, batch_summary], api_name=False)
 
     with gr.Tab("ℹ️ Model Info"):
-        gr.Markdown("""
-## Model
+        gr.Markdown(f"""
+## Production Model
 
 | Item | Detail |
 |---|---|
-| Algorithm | XGBoost (gradient-boosted trees) |
-| HPO | Optuna TPE, 50 trials |
+| Algorithm | XGBoost (Optuna HPO, 50 trials) |
+| Imbalance strategy | `scale_pos_weight` — validated best for recall vs SMOTE/no-balance |
+| Decision threshold | **{OPTIMAL_THRESHOLD}** (business-optimal, not default 0.5) |
 | Preprocessing | StandardScaler · LabelEncoder · OneHotEncoder via sklearn Pipeline |
-| Explainability | SHAP TreeExplainer |
-| Dataset | IBM Telco Customer Churn (7,043 customers, 20 features) |
-| Target | Churn (Yes/No) — ~26% positive rate |
+| Explainability | SHAP TreeExplainer (per-customer + global) |
+| Experiment tracking | MLflow (50 Optuna trials + 4-model comparison) |
+| Dataset | IBM Telco Customer Churn — 7,043 customers, 20 features, 26.5% churn rate |
 
-## Evaluation (test set, 20%)
+## Test Set Results (1,409 customers)
 
-| Metric | Score |
-|---|---|
-| ROC-AUC | see MLflow |
-| F1 (Churn class) | see MLflow |
+| Metric | Default threshold (0.5) | Optimal threshold ({OPTIMAL_THRESHOLD}) |
+|---|---|---|
+| ROC-AUC | **0.8486** | 0.8486 (threshold-independent) |
+| Recall (churn) | 0.80 | higher — catches more churners |
+| Precision (churn) | 0.52 | lower — more contacts needed |
+| F1 | 0.63 | varies |
 
-## Key Findings (SHAP)
+## Model Comparison (experimental run)
 
-Top drivers of churn:
-1. **Month-to-month contract** — highest risk; two-year contracts drastically reduce churn.
-2. **Fiber optic internet** — higher than DSL; may reflect price sensitivity.
-3. **Short tenure** — new customers churn more; first 12 months are critical.
-4. **No online security / tech support** — add-on absence increases risk.
-5. **High monthly charges** — especially without a long-term contract.
+| Model | ROC-AUC | F1 | Notes |
+|---|---|---|---|
+| Logistic Regression | 0.8407 | 0.6176 | Baseline |
+| LightGBM | 0.8264 | 0.5993 | Underperforms on this dataset |
+| **XGBoost (Optuna)** | **0.8488** | **0.6303** | Production model |
+| Stacking Ensemble | see MLflow | — | XGBoost + LR + LightGBM meta |
+
+## Class Imbalance Comparison (SMOTE experiment)
+
+| Strategy | ROC-AUC | Recall | Verdict |
+|---|---|---|---|
+| No balancing | 0.8391 | 0.53 | Misses most churners |
+| **scale_pos_weight** | **0.8391** | **0.76** | Best recall, chosen |
+| SMOTE | 0.8396 | 0.62 | Higher AUC but lower recall |
+| SMOTE-Tomek | 0.8378 | 0.61 | Lowest across both |
+
+**Finding:** `scale_pos_weight` gives the best recall (catches more churners) at similar AUC to SMOTE — ideal for a churn use case where false negatives are 5–10× more costly than false positives.
+
+## Business Value (cost-sensitive analysis)
+
+- Avg customer CLV (12 months): ~$780
+- Campaign cost per contact: $20
+- Assumed retention rate: 30%
+- **Optimal threshold** maximises expected profit: *revenue saved - campaign spend*
         """)
 
 

@@ -22,12 +22,14 @@ End-to-end MLOps pipeline predicting telecom customer churn. Built as a Data Sci
 
 | What | Detail |
 |---|---|
-| **Algorithm** | XGBoost with Optuna HPO (50 trials, TPE sampler) |
-| **ROC-AUC** | 0.8486 (test set, 20% split) |
-| **Explainability** | SHAP TreeExplainer — global + per-customer breakdown |
+| **Algorithm** | XGBoost (Optuna HPO, 50 trials) — validated best across 4-model comparison |
+| **ROC-AUC** | **0.8486** (test set, 20% split) |
+| **Business value** | Business-optimal decision threshold lifts net profit from $57.7K → $64.7K (+$7.2K) on the 1,409-customer test set |
+| **Explainability** | SHAP TreeExplainer — global importance + per-customer bar chart |
+| **Experiments** | 4-model comparison (LR / LightGBM / XGBoost / Stacking) + 4-strategy SMOTE comparison |
 | **Serving** | FastAPI REST endpoint (`/predict`, `/predict/batch`) |
-| **UI** | Gradio — single prediction + CSV batch upload |
-| **Experiment tracking** | MLflow — params, metrics, model registry |
+| **UI** | Gradio — real-time SHAP + business cost estimate per prediction |
+| **Experiment tracking** | MLflow — all trials, model comparison, SMOTE variants |
 | **Drift monitoring** | Evidently HTML report |
 | **Deployment** | Docker (API) + Hugging Face Spaces (Gradio UI) |
 
@@ -37,12 +39,13 @@ End-to-end MLOps pipeline predicting telecom customer churn. Built as a Data Sci
 
 ```
 Raw CSV
-  └─► preprocess.py  (sklearn Pipeline: impute → encode → scale)
-        └─► train.py  (XGBoost + Optuna + MLflow logging)
-              └─► evaluate.py  (confusion matrix, ROC, SHAP plots)
-                    ├─► api/main.py  (FastAPI — /predict, /predict/batch)
-                    ├─► app/gradio_app.py  (HF Spaces demo)
-                    └─► monitoring/drift_report.py  (Evidently)
+  └─► preprocess.py       (sklearn Pipeline: impute → encode → scale)
+        ├─► train.py       (XGBoost + Optuna 50-trial HPO + MLflow)
+        ├─► experiments.py (model comparison + SMOTE + stacking + business metrics)
+        └─► evaluate.py    (confusion matrix, ROC, SHAP, Expected Profit Curve)
+              ├─► api/main.py          (FastAPI — /predict, /predict/batch)
+              ├─► app/gradio_app.py    (HF Spaces — SHAP + business cost estimate)
+              └─► monitoring/drift_report.py (Evidently)
 ```
 
 ---
@@ -137,13 +140,45 @@ Features: tenure, monthly charges, contract type, internet service, add-on servi
 
 **Test set results (1,409 customers):**
 
-| Metric | Score |
-|---|---|
-| ROC-AUC | **0.8486** |
-| Recall (Churn) | **0.80** — catches 4 in 5 churners |
-| Precision (Churn) | 0.52 |
-| F1 (Churn) | 0.63 |
-| Accuracy | 0.75 |
+| Metric | Default threshold (0.5) | Optimal threshold |
+|---|---|---|
+| ROC-AUC | **0.8486** | 0.8486 (threshold-independent) |
+| Recall (Churn) | 0.80 | higher |
+| Precision (Churn) | 0.52 | lower |
+| F1 | 0.63 | — |
+
+### Class Imbalance Experiment (4 strategies compared)
+
+| Strategy | ROC-AUC | Recall | Verdict |
+|---|---|---|---|
+| No balancing | 0.8391 | 0.53 | ❌ misses half of churners |
+| **`scale_pos_weight` (chosen)** | **0.8391** | **0.76** | ✅ best recall for churn use case |
+| SMOTE | 0.8396 | 0.62 | marginal AUC gain, lower recall |
+| SMOTE-Tomek | 0.8378 | 0.61 | underperforms both |
+
+**Finding:** `scale_pos_weight` is the right choice here — in churn, false negatives (missed churners) cost 5–10× more than false positives, so recall is the priority metric.
+
+### Model Comparison (4 models, same train/test split)
+
+| Model | ROC-AUC | F1 |
+|---|---|---|
+| Logistic Regression (baseline) | 0.8407 | 0.6176 |
+| LightGBM | 0.8264 | 0.5993 |
+| **XGBoost — Optuna 50 trials** | **0.8488** | **0.6303** |
+| Stacking (XGB + LR + LightGBM) | 0.8454 | 0.6047 |
+
+**Finding:** LightGBM underperforms XGBoost on this specific dataset, and a stacking ensemble (LR + XGBoost + LightGBM with a logistic meta-learner) does **not** beat the single Optuna-tuned XGBoost (0.8454 < 0.8488). Sometimes the simpler model wins — so XGBoost stays in production.
+
+### Business Value Analysis
+
+Cost structure: FN (missed churner) = CLV lost ≈ $769 (12-mo) | FP (wrong contact) = $20 campaign cost | retention success rate = 30%
+
+| Scenario | Contacts | Retained | Revenue saved | Campaign spend | Net profit |
+|---|---|---|---|---|---|
+| Default threshold (0.50) | 578 | 90 | $69,216 | $11,560 | $57,656 |
+| **Optimal threshold (0.168)** | 943 | 109 | $83,521 | $18,860 | **$64,661** |
+
+The optimal threshold is found by sweeping 200 thresholds and **maximising expected profit — not F1**. Because a missed churner costs ~38× a wasted outreach, the model should cast a wider net: lowering the threshold to 0.168 contacts 365 more customers, but saves an extra **$6,805 net** (+12.6%). This is the decision production teams actually care about. See `reports/figures/profit_curve.png`.
 
 ### Key SHAP Findings
 
@@ -188,7 +223,9 @@ docker compose up --build
 
 ## What I Learned
 
-- **Class imbalance matters at prediction time too.** `scale_pos_weight` in XGBoost fixes calibration; without it recall on the minority class collapses.
+- **The threshold is a business decision, not 0.5.** ROC-AUC measures ranking; profit measures the business. Sweeping thresholds against an explicit cost matrix (FN ≈ 38× FP) moved the decision point to 0.168 and added ~$6.8K net profit — with no change to the model itself.
+- **Complexity isn't free, and doesn't always pay.** A stacking ensemble (LR + XGBoost + LightGBM) *underperformed* the single Optuna-tuned XGBoost (0.8454 vs 0.8488). Knowing when to stop adding models is part of the job.
+- **Class imbalance matters at prediction time too.** `scale_pos_weight` in XGBoost beat SMOTE and SMOTE-Tomek on recall (0.76 vs 0.62/0.61) — the metric that matters when missing a churner is the expensive error.
 - **SHAP beats feature importance for stakeholders.** Showing *per-customer* reasons for a prediction is more actionable than a global bar chart alone.
 - **Optuna > GridSearch for HPO.** 50 TPE trials covers more of the space than an exhaustive 3-fold grid in the same wall time.
 - **Evidently makes drift visible, not invisible.** Monthly charges distribution shifts first — good leading indicator before model performance degrades.

@@ -23,6 +23,10 @@ from src.config import (
     FIGURES_DIR, MODEL_PATH, SHAP_VALUES, TARGET,
 )
 from src.preprocess import build_preprocessor, get_feature_names, load_raw, split
+from src.business_metrics import (
+    business_summary, find_optimal_threshold,
+    plot_profit_curve, print_business_report,
+)
 
 plt.rcParams.update({"figure.dpi": 150, "font.size": 11})
 
@@ -128,8 +132,25 @@ def run_evaluation():
     plot_confusion_matrix(pipeline, X_test, y_test)
     plot_roc_curve(pipeline, X_test, y_test)
 
+    # ── Business metrics + Profit Curve ───────────────────────────────────
+    print("\nComputing business metrics...")
+    monthly = df.loc[y_test.index, "MonthlyCharges"] \
+              if hasattr(y_test, "index") else None
+    summary = business_summary(y_test, y_prob, monthly)
+    print_business_report(summary)
+
+    opt = find_optimal_threshold(
+        y_test, y_prob,
+        float(monthly.mean()) if monthly is not None else 65.0
+    )
+    fig_profit = plot_profit_curve(opt)
+    profit_path = FIGURES_DIR / "profit_curve.png"
+    fig_profit.savefig(profit_path, bbox_inches="tight")
+    plt.close(fig_profit)
+    print(f"Saved: {profit_path}")
+
     # ── SHAP ───────────────────────────────────────────────────────────────
-    print("\nComputing SHAP values (may take ~30 s)…")
+    print("\nComputing SHAP values (may take ~30 s)...")
     shap_values, X_transformed, feature_names, _ = compute_shap(pipeline, X_train)
     plot_shap_summary(shap_values, X_transformed, feature_names)
     plot_shap_bar(shap_values, feature_names)

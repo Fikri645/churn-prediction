@@ -1,0 +1,35 @@
+{
+  "best_model": "XGBoost",
+  "optimal_threshold": 0.168,
+  "business_summary": {
+    "avg_monthly_charges": 64.09,
+    "avg_clv": 769.07,
+    "n_churners_in_test": 374,
+    "max_revenue_at_risk_$": 287631.0,
+    "optimal_threshold": 0.168,
+    "max_expected_profit_$": 64871.32,
+    "at_default_0.5": {
+      "tp": 300,
+      "fp": 278,
+      "fn": 74,
+      "tn": 757,
+      "customers_contacted": 578,
+      "predicted_retained": 90.0,
+      "revenue_saved_$": 69216.0,
+      "campaign_spend_$": 11560.0,
+      "net_profit_$": 57656.0
+    },
+    "at_optimal_threshold": {
+      "tp": 362,
+      "fp": 581,
+      "fn": 12,
+      "tn": 454,
+      "customers_contacted": 943,
+      "predicted_retained": 108.6,
+      "revenue_saved_$": 83521.0,
+      "campaign_spend_$": 18860.0,
+      "net_profit_$": 64661.0
+    },
+    "profit_improvement_$": 7215.35
+  }
+}

@@ -3,6 +3,7 @@ pandas>=2.2
 numpy>=1.26
 scikit-learn>=1.5
 xgboost>=3.0
+lightgbm>=4.0
 optuna>=4.0
 imbalanced-learn>=0.12
 
