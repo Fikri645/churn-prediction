@@ -64,16 +64,19 @@ python scripts/download_data.py
 # 3. Train (Optuna HPO + MLflow)
 python -m src.train
 
-# 4. Evaluate + generate SHAP plots
+# 4. Evaluate + generate SHAP plots + Expected Profit Curve
 python -m src.evaluate
 
-# 5. Run API locally
+# 5. Run model comparison experiments (SMOTE, LightGBM, Stacking — logged to MLflow)
+python -m src.experiments
+
+# 7. Run API locally
 uvicorn api.main:app --reload
 
-# 6. Run Gradio UI locally
+# 8. Run Gradio UI locally
 python app/gradio_app.py
 
-# 7. Generate drift report
+# 9. Generate drift report
 python -m monitoring.drift_report
 ```
 
@@ -90,7 +93,9 @@ churn-prediction/
 │   ├── config.py               # paths, feature lists, constants
 │   ├── preprocess.py           # sklearn ColumnTransformer Pipeline
 │   ├── train.py                # XGBoost + Optuna + MLflow
-│   └── evaluate.py             # metrics, ROC, SHAP plots
+│   ├── evaluate.py             # metrics, ROC, SHAP plots, profit curve
+│   ├── business_metrics.py     # cost-sensitive metrics, Expected Profit Curve
+│   └── experiments.py          # SMOTE comparison, model comparison, stacking
 ├── api/
 │   ├── main.py                 # FastAPI app
 │   └── schemas.py              # Pydantic request/response models

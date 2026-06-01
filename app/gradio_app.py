@@ -265,14 +265,14 @@ with demo:
 | Precision (churn) | 0.52 | lower — more contacts needed |
 | F1 | 0.63 | varies |
 
-## Model Comparison (experimental run)
+## Model Comparison (experimental run — logged to MLflow)
 
 | Model | ROC-AUC | F1 | Notes |
 |---|---|---|---|
 | Logistic Regression | 0.8407 | 0.6176 | Baseline |
 | LightGBM | 0.8264 | 0.5993 | Underperforms on this dataset |
-| **XGBoost (Optuna)** | **0.8488** | **0.6303** | Production model |
-| Stacking Ensemble | see MLflow | — | XGBoost + LR + LightGBM meta |
+| **XGBoost (Optuna)** | **0.8488** | **0.6303** | ✅ Production model |
+| Stacking (XGB+LR+LightGBM) | 0.8454 | 0.6047 | Ensemble doesn't beat single XGBoost |
 
 ## Class Imbalance Comparison (SMOTE experiment)
 
@@ -285,12 +285,17 @@ with demo:
 
 **Finding:** `scale_pos_weight` gives the best recall (catches more churners) at similar AUC to SMOTE — ideal for a churn use case where false negatives are 5–10× more costly than false positives.
 
-## Business Value (cost-sensitive analysis)
+## Business Value — Expected Profit Analysis
 
-- Avg customer CLV (12 months): ~$780
-- Campaign cost per contact: $20
-- Assumed retention rate: 30%
-- **Optimal threshold** maximises expected profit: *revenue saved - campaign spend*
+Cost structure: FN (missed churner) = CLV ~$769 lost · FP (wrong contact) = $20 · Retention = 30%
+
+| Scenario | Threshold | Contacts | Net Profit |
+|---|---|---|---|
+| Default | 0.5 | 578 | $57,656 |
+| **Optimal** | **{OPTIMAL_THRESHOLD}** | **943** | **$64,661 (+$7,215)** |
+
+The optimal threshold is found by sweeping 200 values and **maximising expected profit** — not F1.
+Lowering the threshold from 0.5 → {OPTIMAL_THRESHOLD} catches 62 more churners (+16.5% net profit).
         """)
 
 
