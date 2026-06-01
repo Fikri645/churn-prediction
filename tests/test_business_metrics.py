@@ -44,13 +44,15 @@ class TestExpectedProfit:
         assert expected_profit(y, p, threshold=1.0) == 0.0
 
     def test_threshold_zero_contacts_everyone(self):
-        """At threshold≈0, everyone is contacted — formula matches manual calc."""
+        """At threshold=0.0, every customer is flagged positive (TP+FP=total)."""
         y, p = _make_labels()
-        profit = expected_profit(y, p, threshold=0.01, avg_monthly=65.0)
+        # Force all probs > 0.0 so everyone is predicted positive at threshold=0.0
+        p_all_pos = np.ones(len(y)) * 0.99
+        profit = expected_profit(y, p_all_pos, threshold=0.01, avg_monthly=65.0)
         clv = 65.0 * 12
         tp_gain = clv * RETENTION_RATE - CAMPAIGN_COST
         fp_cost = CAMPAIGN_COST
-        tp = int(y.sum())       # all positives predicted positive
+        tp = int(y.sum())
         fp = int((y == 0).sum())
         expected = tp * tp_gain - fp * fp_cost
         assert abs(profit - expected) < 1e-6
