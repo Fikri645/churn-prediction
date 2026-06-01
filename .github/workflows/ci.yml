@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.11"]
+        python-version: ["3.12"]
 
     steps:
       - name: Checkout code
@@ -24,7 +24,7 @@ jobs:
           cache: "pip"
 
       - name: Install dependencies
-        run: pip install -r requirements-dev.txt
+        run: pip install pandas numpy scikit-learn xgboost lightgbm imbalanced-learn shap matplotlib pydantic pytest pytest-cov ruff
 
       - name: Lint with ruff
         run: ruff check src/ tests/ api/ app/ --ignore E501
