@@ -12,6 +12,12 @@ python_version: "3.11"
 
 # Customer Churn Prediction
 
+![CI](https://github.com/Fikri645/churn-prediction/actions/workflows/ci.yml/badge.svg)
+![Python](https://img.shields.io/badge/python-3.11-blue)
+![XGBoost](https://img.shields.io/badge/XGBoost-3.x-orange)
+[![HF Spaces](https://img.shields.io/badge/🤗%20HuggingFace-Space-yellow)](https://huggingface.co/spaces/fikri0o0/churn-prediction)
+![License](https://img.shields.io/badge/license-MIT-green)
+
 End-to-end MLOps pipeline predicting telecom customer churn. Built as a Data Scientist portfolio piece demonstrating the full workflow from raw data to a live web demo.
 
 **[Live Demo →](https://huggingface.co/spaces/fikri0o0/churn-prediction)**  |  **[GitHub →](https://github.com/Fikri645/churn-prediction)**
@@ -26,6 +32,7 @@ End-to-end MLOps pipeline predicting telecom customer churn. Built as a Data Sci
 | **ROC-AUC** | **0.8486** (test set, 20% split) |
 | **Business value** | Business-optimal decision threshold lifts net profit from $57.7K → $64.7K (+$7.2K) on the 1,409-customer test set |
 | **Explainability** | SHAP TreeExplainer — global importance + per-customer bar chart |
+| **Calibration** | Reliability diagram + Brier score — verifying probabilities are meaningful |
 | **Experiments** | 4-model comparison (LR / LightGBM / XGBoost / Stacking) + 4-strategy SMOTE comparison |
 | **Serving** | FastAPI REST endpoint (`/predict`, `/predict/batch`) |
 | **UI** | Gradio — real-time SHAP + business cost estimate per prediction |
@@ -89,13 +96,19 @@ churn-prediction/
 ├── data/
 │   ├── raw/                    # Telco-Customer-Churn.csv (not committed)
 │   └── processed/              # train.csv, test.csv
+├── notebooks/
+│   └── 01_eda.ipynb            # Exploratory Data Analysis
 ├── src/
 │   ├── config.py               # paths, feature lists, constants
 │   ├── preprocess.py           # sklearn ColumnTransformer Pipeline
 │   ├── train.py                # XGBoost + Optuna + MLflow
-│   ├── evaluate.py             # metrics, ROC, SHAP plots, profit curve
+│   ├── evaluate.py             # metrics, ROC, SHAP, calibration, profit curve
 │   ├── business_metrics.py     # cost-sensitive metrics, Expected Profit Curve
 │   └── experiments.py          # SMOTE comparison, model comparison, stacking
+├── tests/
+│   ├── test_business_metrics.py
+│   ├── test_preprocess.py
+│   └── test_api_schemas.py
 ├── api/
 │   ├── main.py                 # FastAPI app
 │   └── schemas.py              # Pydantic request/response models

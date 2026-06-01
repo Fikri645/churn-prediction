@@ -14,9 +14,10 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 import shap
+from sklearn.calibration import CalibrationDisplay
 from sklearn.metrics import (
     ConfusionMatrixDisplay, RocCurveDisplay,
-    classification_report, roc_auc_score,
+    brier_score_loss, classification_report, roc_auc_score,
 )
 
 from src.config import (
@@ -148,6 +149,25 @@ def run_evaluation():
     fig_profit.savefig(profit_path, bbox_inches="tight")
     plt.close(fig_profit)
     print(f"Saved: {profit_path}")
+
+    # ── Calibration curve ─────────────────────────────────────────────────
+    print("\nPlotting calibration curve...")
+    brier = brier_score_loss(y_test, y_prob)
+    fig_cal, ax_cal = plt.subplots(figsize=(6, 5))
+    CalibrationDisplay.from_predictions(
+        y_test, y_prob, n_bins=10, ax=ax_cal,
+        name=f"XGBoost  (Brier = {brier:.4f})",
+    )
+    ax_cal.set_title(
+        f"Reliability Diagram — Model Calibration\n"
+        f"Brier Score: {brier:.4f}  (0 = perfect, 0.25 = random)"
+    )
+    fig_cal.tight_layout()
+    cal_path = FIGURES_DIR / "calibration_curve.png"
+    fig_cal.savefig(cal_path)
+    plt.close(fig_cal)
+    print(f"  Brier score : {brier:.4f}")
+    print(f"  Saved: {cal_path}")
 
     # ── SHAP ───────────────────────────────────────────────────────────────
     print("\nComputing SHAP values (may take ~30 s)...")
